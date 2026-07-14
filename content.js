@@ -80,7 +80,9 @@
 
   // ── 刪除單筆:走原生 三點選單 → 刪除 → 確認,等 DOM 移除確認 ──
   async function deleteOneRow(item) {
-    let btn = querySel(ACTIONS_BTN, item);
+    // 三點選單在 .hovered-trailing-content 裡,可能 hover 才 render → 先派 mouseover
+    item.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    let btn = await waitForElement(ACTIONS_BTN, item, 1500);
     if (!btn) { // more_vert icon fallback(語言無關)
       for (const b of item.querySelectorAll("button")) {
         const icon = b.querySelector("mat-icon");
@@ -153,11 +155,14 @@
   const checkedBoxes = () => document.querySelectorAll(".gbd-check:checked");
   function setAll(v) { for (const cb of document.querySelectorAll(".gbd-check")) cb.checked = v; updateBar(); }
 
-  // 取對話標題文字(排除我們注入的 checkbox)
+  // 取對話標題:優先 .title-text 或 <a> 的 aria-label。
+  // 不能用 textContent — Gemini 的 icon 是文字 ligature(push_pin/more_vert),
+  // 會被一起抓進來污染關鍵字比對。
   function rowTitle(row) {
-    const cb = row.querySelector(":scope > .gbd-check");
-    if (cb) cb.setAttribute("aria-hidden", "true");
-    return (row.textContent || "").replace(/\s+/g, " ").trim();
+    const t = row.querySelector(".title-text");
+    if (t) return (t.textContent || "").trim();
+    const a = row.querySelector("a[aria-label]");
+    return a ? (a.getAttribute("aria-label") || "").trim() : "";
   }
 
   // 選取標題含關鍵字的對話(不分大小寫;累加,不會清掉既有選取)

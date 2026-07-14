@@ -13,9 +13,8 @@
 }
 /* 勾選框佔的左側空間,把對話標題往右推一點,才不會被蓋到字 */
 gem-nav-list-item[data-test-id="conversation"] { position: relative; }
-gem-nav-list-item[data-test-id="conversation"] .conversation-title,
-gem-nav-list-item[data-test-id="conversation"] [data-test-id="conversation-title"] {
-  padding-left: 20px;
+gem-nav-list-item[data-test-id="conversation"] .mdc-list-item__content {
+  padding-left: 18px;
 }
 
 .gbd-bar {
