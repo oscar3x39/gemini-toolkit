@@ -82,5 +82,21 @@ gem-nav-list-item[data-test-id="conversation"].gbd-selected a {
 .gbd-del:hover { background: #c5372f; }
 .gbd-status { font-size: 12px; opacity: 0.85; }
 
+.gbd-actions { display: inline-flex; align-items: center; gap: 8px; }
+
+/* 選取模式開:亮起 */
+.gbd-mode.on { background: #1a73e8; }
+.gbd-mode.on:hover { background: #2b7de9; }
+
+/* 中止鈕平常隱藏,只在刪除中出現 */
+.gbd-cancel { display: none; background: #8a4b00; }
+.gbd-cancel:hover { background: #a55b00; }
+.gbd-bar.gbd-running .gbd-cancel { display: inline-block; }
+.gbd-bar.gbd-running .gbd-actions { display: none; }
+
+/* 閒置(無選取、非選取模式)→ 收起關鍵字/刪除,只留模式鈕 */
+.gbd-bar.gbd-idle .gbd-actions,
+.gbd-bar.gbd-idle .gbd-count { display: none; }
+
 /* 刪除進行中:蓋掉原生選單/對話框閃爍 */
 body.gbd-deleting .cdk-overlay-container { opacity: 0; pointer-events: none; }

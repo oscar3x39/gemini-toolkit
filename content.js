@@ -87,6 +87,14 @@
   // ── 選取狀態(以 id 記錄)──────────────────────────────────
   const selected = new Set();
   let anchorId = null;
+  let aborted = false;
+  let selectMode = false;
+  try { selectMode = localStorage.getItem("gbd.selectMode") === "1"; } catch (_) {}
+  const setSelectMode = (v) => {
+    selectMode = v;
+    try { localStorage.setItem("gbd.selectMode", v ? "1" : "0"); } catch (_) {}
+    updateBar();
+  };
 
   function applyHighlight() {
     for (const row of getRows()) row.classList.toggle("gbd-selected", selected.has(idOf(row)));
@@ -143,20 +151,24 @@
     if (!confirm(`確定刪除 ${targets.length} 筆對話?此動作無法復原。`)) return;
 
     running = true;
+    aborted = false;
     document.body.classList.add("gbd-deleting");
+    updateBar(); // 顯示中止鈕
     const status = bar.querySelector(".gbd-status");
     let done = 0, fail = 0;
     for (let i = 0; i < targets.length; i++) {
+      if (aborted) break;
       status.textContent = `刪除中 ${i + 1}/${targets.length}…`;
       const id = idOf(targets[i]);
       if (await deleteOneRow(targets[i])) { selected.delete(id); done++; } else { fail++; }
       await delay(400);
     }
     document.body.classList.remove("gbd-deleting");
+    running = false;
     applyHighlight();
     updateBar();
-    status.textContent = `完成:成功 ${done}${fail ? `、失敗 ${fail}(可再試)` : ""}`;
-    running = false;
+    const head = aborted ? "已中止" : "完成";
+    status.textContent = `${head}:成功 ${done}${fail ? `、失敗 ${fail}(可再試)` : ""}`;
     setTimeout(() => { if (status && !running) status.textContent = ""; }, 5000);
   }
 
@@ -190,20 +202,36 @@
     bar = document.createElement("div");
     bar.className = "gbd-bar";
     bar.innerHTML =
+      '<button class="gbd-btn gbd-mode" title="開啟後一般左鍵即選取,不用壓 Cmd"></button>' +
       '<span class="gbd-count">0</span>' +
-      '<input class="gbd-filter" type="text" placeholder="關鍵字…" />' +
-      '<button class="gbd-btn gbd-match">選符合</button>' +
-      '<button class="gbd-btn gbd-clear">清除</button>' +
-      '<button class="gbd-btn gbd-del">刪除選取</button>' +
+      '<span class="gbd-actions">' +
+        '<input class="gbd-filter" type="text" placeholder="關鍵字…" />' +
+        '<button class="gbd-btn gbd-match">選符合</button>' +
+        '<button class="gbd-btn gbd-clear">清除</button>' +
+        '<button class="gbd-btn gbd-del">刪除選取</button>' +
+      '</span>' +
+      '<button class="gbd-btn gbd-cancel">中止</button>' +
       '<span class="gbd-status"></span>';
     document.body.appendChild(bar);
     const fi = bar.querySelector(".gbd-filter");
+    bar.querySelector(".gbd-mode").addEventListener("click", () => setSelectMode(!selectMode));
     bar.querySelector(".gbd-match").addEventListener("click", () => selectByKeyword(fi.value));
     fi.addEventListener("keydown", (e) => { if (e.key === "Enter") selectByKeyword(fi.value); });
     bar.querySelector(".gbd-clear").addEventListener("click", clearSelection);
     bar.querySelector(".gbd-del").addEventListener("click", runDelete);
+    bar.querySelector(".gbd-cancel").addEventListener("click", () => { aborted = true; });
+    updateBar();
   }
-  function updateBar() { if (bar) bar.querySelector(".gbd-count").textContent = String(selected.size); }
+  function updateBar() {
+    if (!bar) return;
+    bar.querySelector(".gbd-count").textContent = String(selected.size);
+    const mode = bar.querySelector(".gbd-mode");
+    mode.textContent = selectMode ? "選取模式:開" : "選取模式:關";
+    mode.classList.toggle("on", selectMode);
+    // 閒置(無選取、非選取模式、沒在刪)→ 收起關鍵字/刪除,只留模式鈕
+    bar.classList.toggle("gbd-idle", !running && selected.size === 0 && !selectMode);
+    bar.classList.toggle("gbd-running", running);
+  }
   function selectByKeyword(kw) {
     const q = (kw || "").trim().toLowerCase();
     if (!q) return;
@@ -224,6 +252,13 @@
     if (!row) {
       // 點對話以外的空白處(但不含工具列/右鍵選單)→ 清空選取
       if (selected.size && !e.target.closest(".gbd-bar") && !e.target.closest(".gbd-ctxmenu")) clearSelection();
+      return;
+    }
+    // 選取模式:一般左鍵即選取(不用壓 Cmd),Shift 仍範圍選,擋掉導覽
+    if (selectMode) {
+      e.preventDefault(); e.stopPropagation();
+      if (e.shiftKey) selectRange(anchorId || idOf(row), idOf(row));
+      else { const id = idOf(row); toggle(id); anchorId = id; }
       return;
     }
     if (e.metaKey || e.ctrlKey) {
@@ -247,7 +282,14 @@
     showMenu(e.clientX, e.clientY);
   }, true);
 
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideMenu(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    hideMenu();
+    // 非刪除中、焦點不在關鍵字框時,Esc 清空選取(避免打斷我們自己關 dialog 的 Escape)
+    if (!running && selected.size && !(e.target && e.target.classList && e.target.classList.contains("gbd-filter"))) {
+      clearSelection();
+    }
+  });
   window.addEventListener("scroll", hideMenu, true);
 
   // ── 啟動 ────────────────────────────────────────────────────
