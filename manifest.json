@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Gemini Toolkit",
+  "version": "0.1.0",
+  "description": "Gemini 側欄增強工具集:多選批次刪除、關鍵字過濾。純本地執行、零外連。",
+  "content_scripts": [
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
