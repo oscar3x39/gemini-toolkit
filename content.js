@@ -221,7 +221,11 @@
   document.addEventListener("click", (e) => {
     if (menuEl && !e.target.closest(".gbd-ctxmenu")) hideMenu();
     const row = e.target.closest(ROW_SELECTOR);
-    if (!row) return;
+    if (!row) {
+      // 點對話以外的空白處(但不含工具列/右鍵選單)→ 清空選取
+      if (selected.size && !e.target.closest(".gbd-bar") && !e.target.closest(".gbd-ctxmenu")) clearSelection();
+      return;
+    }
     if (e.metaKey || e.ctrlKey) {
       e.preventDefault(); e.stopPropagation();
       const id = idOf(row); toggle(id); anchorId = id;
