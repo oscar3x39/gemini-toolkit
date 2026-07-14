@@ -1,14 +1,21 @@
+/* 勾選框放左邊,避免蓋住 Gemini 右側的釘選 icon 與三點選單 */
 .gbd-check {
   position: absolute;
   top: 50%;
-  right: 8px;
+  left: 6px;
   transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   margin: 0;
   cursor: pointer;
   z-index: 5;
   accent-color: #1a73e8;
+}
+/* 勾選框佔的左側空間,把對話標題往右推一點,才不會被蓋到字 */
+gem-nav-list-item[data-test-id="conversation"] { position: relative; }
+gem-nav-list-item[data-test-id="conversation"] .conversation-title,
+gem-nav-list-item[data-test-id="conversation"] [data-test-id="conversation-title"] {
+  padding-left: 20px;
 }
 
 .gbd-bar {
