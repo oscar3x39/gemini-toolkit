@@ -1,17 +1,18 @@
-// Gemini Bulk Delete — content script
-// Selector 與刪除流程對照開源 Gemini Mass Delete (MIT, sinadalvand) 驗證過,
-// 重新實作。核心 selector 用 Gemini 的 data-test-id(穩定);刪除/確認再加
-// aria-label 與文字 fallback(多語系)。刪除採 bottom-up + 等 DOM 移除確認。
+// Gemini Toolkit — content script
+// 選取模型:Cmd/Ctrl+左鍵逐個選、Shift+左鍵範圍選、右鍵刪除。
+// 選取用「對話 id(href /app/<id>)」記錄,不記 DOM 元素 → Gemini 重繪也不掉。
+// Selector 對照開源 Gemini Mass Delete (MIT) 驗證。純本地、零外連。
 
 (() => {
   "use strict";
-  const TAG = "[GeminiBulkDelete]";
+  const TAG = "[GeminiToolkit]";
 
   // ── 驗證過的 selector ───────────────────────────────────────
   const ROW_SELECTOR = 'gem-nav-list-item[data-test-id="conversation"]';
-  const ROW_FALLBACKS = ['[data-test-id="conversation"]']; // 保險:Gemini 若改自訂元素名
+  const ROW_FALLBACKS = ['[data-test-id="conversation"]'];
   const ACTIONS_BTN = [
     '[data-test-id="actions-menu-button"]',
+    'button[aria-label*="動作"]',
     'button[aria-label*="options" i]',
     'button[aria-label*="actions" i]',
     'button[aria-label*="menu" i]',
@@ -23,12 +24,10 @@
 
   // ── 小工具 ──────────────────────────────────────────────────
   const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
   const querySel = (sels, parent = document) => {
     for (const s of sels) { try { const el = parent.querySelector(s); if (el) return el; } catch (_) {} }
     return null;
   };
-
   const findButtonByText = (terms, parent = document) => {
     for (const btn of parent.querySelectorAll("button")) {
       const hay = ((btn.textContent || "") + " " + (btn.getAttribute("aria-label") || "")).toLowerCase();
@@ -36,8 +35,6 @@
     }
     return null;
   };
-
-  // 等元素可互動(可見且未 disabled),含文字 fallback
   const waitForElement = (sels, parent = document, timeout = 3000, type = "") =>
     new Promise((resolve) => {
       const get = () => {
@@ -56,8 +53,6 @@
         else if (elapsed >= timeout) { clearInterval(iv); resolve(null); }
       }, 100);
     });
-
-  // Angular Material 選單常需真實 pointer 事件,單純 .click() 打不開
   const simulateClick = (el) => {
     if (!el) return;
     try {
@@ -67,7 +62,6 @@
       el.click();
     } catch (_) { el.click(); }
   };
-
   const pressEscape = () =>
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
 
@@ -77,87 +71,12 @@
     for (const s of ROW_FALLBACKS) { rows = document.querySelectorAll(s); if (rows.length) return Array.from(rows); }
     return [];
   }
-
-  // ── 刪除單筆:走原生 三點選單 → 刪除 → 確認,等 DOM 移除確認 ──
-  async function deleteOneRow(item) {
-    // 三點選單在 .hovered-trailing-content 裡,可能 hover 才 render → 先派 mouseover
-    item.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-    let btn = await waitForElement(ACTIONS_BTN, item, 1500);
-    if (!btn) { // more_vert icon fallback(語言無關)
-      for (const b of item.querySelectorAll("button")) {
-        const icon = b.querySelector("mat-icon");
-        if (icon && (icon.getAttribute("fonticon") === "more_vert" ||
-                     (icon.textContent || "").includes("more_vert"))) { btn = b; break; }
-      }
-    }
-    if (!btn) return false;
-
-    simulateClick(btn);
-    const panel = await waitForElement(MENU_PANEL, document, 3000);
-    if (!panel) return false;
-
-    const del = await waitForElement(DELETE_BTN, panel, 3000, "delete");
-    if (!del) { pressEscape(); return false; }
-    simulateClick(del);
-
-    const dialog = await waitForElement(DIALOG, document, 3000);
-    if (!dialog) return false; // 沒確認框就當作已刪(少數情況)
-    const confirm = await waitForElement(CONFIRM_BTN, dialog, 3000, "confirm");
-    if (!confirm) { pressEscape(); return false; }
-    simulateClick(confirm);
-
-    // 等該 row 從 DOM 移除(最多 5s),確認真的刪掉才算成功
-    for (let i = 0; i < 50; i++) {
-      if (!document.body.contains(item) || item.offsetParent === null) return true;
-      await delay(100);
-    }
-    pressEscape(); // 卡住就關掉 dialog,避免擋住下一筆
-    return false;
+  function idOf(row) {
+    const a = row.matches("a[href]") ? row : row.querySelector('a[href]');
+    const href = (a && a.getAttribute("href")) || "";
+    const m = href.match(/\/app\/([^/?#]+)/);
+    return m ? m[1] : href;
   }
-
-  // ── UI ──────────────────────────────────────────────────────
-  function decorateRows() {
-    for (const row of getRows()) {
-      if (row.querySelector(":scope > .gbd-check")) continue;
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "gbd-check";
-      cb.title = "選取以批次刪除";
-      cb.addEventListener("click", (e) => e.stopPropagation());
-      cb.addEventListener("change", updateBar);
-      if (getComputedStyle(row).position === "static") row.style.position = "relative";
-      row.appendChild(cb);
-    }
-  }
-
-  let bar;
-  function ensureBar() {
-    if (bar) return;
-    bar = document.createElement("div");
-    bar.className = "gbd-bar";
-    bar.innerHTML =
-      '<span class="gbd-count">0</span>' +
-      '<input class="gbd-filter" type="text" placeholder="關鍵字…" />' +
-      '<button class="gbd-btn gbd-match">選符合</button>' +
-      '<button class="gbd-btn gbd-all">全選</button>' +
-      '<button class="gbd-btn gbd-clear">清除</button>' +
-      '<button class="gbd-btn gbd-del">刪除選取</button>' +
-      '<span class="gbd-status"></span>';
-    document.body.appendChild(bar);
-    const filterInput = bar.querySelector(".gbd-filter");
-    bar.querySelector(".gbd-match").addEventListener("click", () => selectByKeyword(filterInput.value));
-    filterInput.addEventListener("keydown", (e) => { if (e.key === "Enter") selectByKeyword(filterInput.value); });
-    bar.querySelector(".gbd-all").addEventListener("click", () => setAll(true));
-    bar.querySelector(".gbd-clear").addEventListener("click", () => setAll(false));
-    bar.querySelector(".gbd-del").addEventListener("click", runDelete);
-  }
-
-  const checkedBoxes = () => document.querySelectorAll(".gbd-check:checked");
-  function setAll(v) { for (const cb of document.querySelectorAll(".gbd-check")) cb.checked = v; updateBar(); }
-
-  // 取對話標題:優先 .title-text 或 <a> 的 aria-label。
-  // 不能用 textContent — Gemini 的 icon 是文字 ligature(push_pin/more_vert),
-  // 會被一起抓進來污染關鍵字比對。
   function rowTitle(row) {
     const t = row.querySelector(".title-text");
     if (t) return (t.textContent || "").trim();
@@ -165,27 +84,61 @@
     return a ? (a.getAttribute("aria-label") || "").trim() : "";
   }
 
-  // 選取標題含關鍵字的對話(不分大小寫;累加,不會清掉既有選取)
-  function selectByKeyword(kw) {
-    const q = (kw || "").trim().toLowerCase();
-    if (!q) return;
-    let n = 0;
-    for (const row of getRows()) {
-      const cb = row.querySelector(":scope > .gbd-check");
-      if (cb && rowTitle(row).toLowerCase().includes(q)) { cb.checked = true; n++; }
-    }
-    updateBar();
-    const status = bar.querySelector(".gbd-status");
-    status.textContent = `符合「${kw.trim()}」:選取 ${n} 筆`;
-    setTimeout(() => { if (status && !running) status.textContent = ""; }, 4000);
+  // ── 選取狀態(以 id 記錄)──────────────────────────────────
+  const selected = new Set();
+  let anchorId = null;
+
+  function applyHighlight() {
+    for (const row of getRows()) row.classList.toggle("gbd-selected", selected.has(idOf(row)));
   }
-  function updateBar() { if (bar) bar.querySelector(".gbd-count").textContent = String(checkedBoxes().length); }
+  function clearSelection() { selected.clear(); anchorId = null; applyHighlight(); updateBar(); }
+  function toggle(id) { selected.has(id) ? selected.delete(id) : selected.add(id); applyHighlight(); updateBar(); }
+  function selectRange(fromId, toId) {
+    const ids = getRows().map(idOf);
+    const a = ids.indexOf(fromId), b = ids.indexOf(toId);
+    if (a === -1 || b === -1) { selected.add(toId); applyHighlight(); updateBar(); return; }
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    for (let i = lo; i <= hi; i++) selected.add(ids[i]);
+    applyHighlight(); updateBar();
+  }
+
+  // ── 刪除單筆(原生 三點選單 → 刪除 → 確認,等 DOM 移除)───
+  async function deleteOneRow(item) {
+    item.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    let btn = await waitForElement(ACTIONS_BTN, item, 1500);
+    if (!btn) {
+      for (const b of item.querySelectorAll("button")) {
+        const icon = b.querySelector("mat-icon");
+        if (icon && (icon.getAttribute("fonticon") === "more_vert" ||
+                     (icon.getAttribute("data-mat-icon-name") || "") === "more_vert")) { btn = b; break; }
+      }
+    }
+    if (!btn) return false;
+    simulateClick(btn);
+    const panel = await waitForElement(MENU_PANEL, document, 3000);
+    if (!panel) return false;
+    const del = await waitForElement(DELETE_BTN, panel, 3000, "delete");
+    if (!del) { pressEscape(); return false; }
+    simulateClick(del);
+    const dialog = await waitForElement(DIALOG, document, 3000);
+    if (!dialog) return false;
+    const confirm = await waitForElement(CONFIRM_BTN, dialog, 3000, "confirm");
+    if (!confirm) { pressEscape(); return false; }
+    simulateClick(confirm);
+    for (let i = 0; i < 50; i++) {
+      if (!document.body.contains(item) || item.offsetParent === null) return true;
+      await delay(100);
+    }
+    pressEscape();
+    return false;
+  }
 
   let running = false;
   async function runDelete() {
-    if (running) return;
-    // bottom-up:刪除會位移後續 row,由下往上最安全
-    const targets = Array.from(checkedBoxes()).map((cb) => cb.closest(ROW_SELECTOR) || cb.parentElement).reverse();
+    if (running || !selected.size) return;
+    hideMenu();
+    // 依 DOM 由上到下取出已選 row,反向刪(bottom-up 避免位移)
+    const targets = getRows().filter((r) => selected.has(idOf(r))).reverse();
     if (!targets.length) return;
     if (!confirm(`確定刪除 ${targets.length} 筆對話?此動作無法復原。`)) return;
 
@@ -195,23 +148,107 @@
     let done = 0, fail = 0;
     for (let i = 0; i < targets.length; i++) {
       status.textContent = `刪除中 ${i + 1}/${targets.length}…`;
-      (await deleteOneRow(targets[i])) ? done++ : fail++;
+      const id = idOf(targets[i]);
+      if (await deleteOneRow(targets[i])) { selected.delete(id); done++; } else { fail++; }
       await delay(400);
     }
     document.body.classList.remove("gbd-deleting");
+    applyHighlight();
     updateBar();
-    status.textContent = `完成:成功 ${done}${fail ? `、失敗 ${fail}(可再試一次)` : ""}`;
+    status.textContent = `完成:成功 ${done}${fail ? `、失敗 ${fail}(可再試)` : ""}`;
     running = false;
-    setTimeout(() => { if (status) status.textContent = ""; }, 5000);
+    setTimeout(() => { if (status && !running) status.textContent = ""; }, 5000);
   }
 
-  // ── 啟動:側欄動態載入 → MutationObserver 持續補 checkbox ────
-  function boot() {
-    ensureBar();
-    decorateRows();
-    console.log(TAG, `row 命中 ${getRows().length} 筆`);
+  // ── 右鍵選單 ────────────────────────────────────────────────
+  let menuEl;
+  function ensureMenu() {
+    if (menuEl) return;
+    menuEl = document.createElement("div");
+    menuEl.className = "gbd-ctxmenu";
+    menuEl.style.display = "none";
+    menuEl.innerHTML = '<button class="gbd-ctx-del"></button><button class="gbd-ctx-clear">取消選取</button>';
+    document.body.appendChild(menuEl);
+    menuEl.querySelector(".gbd-ctx-del").addEventListener("click", runDelete);
+    menuEl.querySelector(".gbd-ctx-clear").addEventListener("click", () => { clearSelection(); hideMenu(); });
   }
-  new MutationObserver(() => { if (!running) decorateRows(); }).observe(document.body, { childList: true, subtree: true });
+  function showMenu(x, y) {
+    ensureMenu();
+    menuEl.querySelector(".gbd-ctx-del").textContent = `刪除選取 (${selected.size})`;
+    menuEl.style.display = "block";
+    // 邊界:避免超出視窗
+    const w = 180, h = 80;
+    menuEl.style.left = Math.min(x, window.innerWidth - w) + "px";
+    menuEl.style.top = Math.min(y, window.innerHeight - h) + "px";
+  }
+  function hideMenu() { if (menuEl) menuEl.style.display = "none"; }
+
+  // ── 底部工具列(關鍵字過濾 + 刪除)──────────────────────────
+  let bar;
+  function ensureBar() {
+    if (bar) return;
+    bar = document.createElement("div");
+    bar.className = "gbd-bar";
+    bar.innerHTML =
+      '<span class="gbd-count">0</span>' +
+      '<input class="gbd-filter" type="text" placeholder="關鍵字…" />' +
+      '<button class="gbd-btn gbd-match">選符合</button>' +
+      '<button class="gbd-btn gbd-clear">清除</button>' +
+      '<button class="gbd-btn gbd-del">刪除選取</button>' +
+      '<span class="gbd-status"></span>';
+    document.body.appendChild(bar);
+    const fi = bar.querySelector(".gbd-filter");
+    bar.querySelector(".gbd-match").addEventListener("click", () => selectByKeyword(fi.value));
+    fi.addEventListener("keydown", (e) => { if (e.key === "Enter") selectByKeyword(fi.value); });
+    bar.querySelector(".gbd-clear").addEventListener("click", clearSelection);
+    bar.querySelector(".gbd-del").addEventListener("click", runDelete);
+  }
+  function updateBar() { if (bar) bar.querySelector(".gbd-count").textContent = String(selected.size); }
+  function selectByKeyword(kw) {
+    const q = (kw || "").trim().toLowerCase();
+    if (!q) return;
+    let n = 0;
+    for (const row of getRows()) {
+      if (rowTitle(row).toLowerCase().includes(q)) { selected.add(idOf(row)); n++; }
+    }
+    applyHighlight(); updateBar();
+    const status = bar.querySelector(".gbd-status");
+    status.textContent = `符合「${kw.trim()}」:選取 ${n} 筆`;
+    setTimeout(() => { if (status && !running) status.textContent = ""; }, 4000);
+  }
+
+  // ── 事件綁定(capture 階段搶在 Angular 前面)────────────────
+  document.addEventListener("click", (e) => {
+    if (menuEl && !e.target.closest(".gbd-ctxmenu")) hideMenu();
+    const row = e.target.closest(ROW_SELECTOR);
+    if (!row) return;
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault(); e.stopPropagation();
+      const id = idOf(row); toggle(id); anchorId = id;
+    } else if (e.shiftKey) {
+      e.preventDefault(); e.stopPropagation();
+      selectRange(anchorId || idOf(row), idOf(row));
+    } else {
+      // 一般左鍵:清掉選取、放行導覽
+      if (selected.size) clearSelection();
+    }
+  }, true);
+
+  document.addEventListener("contextmenu", (e) => {
+    const row = e.target.closest(ROW_SELECTOR);
+    if (!row) { hideMenu(); return; }
+    e.preventDefault();
+    const id = idOf(row);
+    if (!selected.has(id)) { clearSelection(); selected.add(id); anchorId = id; applyHighlight(); updateBar(); }
+    showMenu(e.clientX, e.clientY);
+  }, true);
+
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideMenu(); });
+  window.addEventListener("scroll", hideMenu, true);
+
+  // ── 啟動 ────────────────────────────────────────────────────
+  function boot() { ensureBar(); ensureMenu(); applyHighlight(); console.log(TAG, `row 命中 ${getRows().length} 筆`); }
+  new MutationObserver(() => { if (!running) applyHighlight(); }).observe(document.body, { childList: true, subtree: true });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })();

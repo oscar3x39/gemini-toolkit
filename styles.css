@@ -1,27 +1,45 @@
-/* 勾選框放左邊,避免蓋住 Gemini 右側的釘選 icon 與三點選單 */
-.gbd-check {
-  position: absolute;
-  top: 50%;
-  left: 6px;
-  transform: translateY(-50%);
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  cursor: pointer;
-  z-index: 5;
-  accent-color: #1a73e8;
-}
-/* 勾選框佔的左側空間,把對話標題往右推一點,才不會被蓋到字 */
-gem-nav-list-item[data-test-id="conversation"] { position: relative; }
-gem-nav-list-item[data-test-id="conversation"] .mdc-list-item__content {
-  padding-left: 18px;
+/* 選取高亮 */
+gem-nav-list-item[data-test-id="conversation"].gbd-selected .mat-mdc-list-item,
+gem-nav-list-item[data-test-id="conversation"].gbd-selected a {
+  background: rgba(26, 115, 232, 0.22) !important;
+  outline: 1px solid rgba(26, 115, 232, 0.55);
+  outline-offset: -1px;
+  border-radius: 8px;
 }
 
+/* 右鍵選單 */
+.gbd-ctxmenu {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 150px;
+  padding: 4px;
+  background: #2a2b2d;
+  border: 1px solid #5f6368;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  font: 13px/1.4 "Google Sans", system-ui, sans-serif;
+}
+.gbd-ctxmenu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: transparent;
+  color: #e8eaed;
+  cursor: pointer;
+  font-size: 13px;
+}
+.gbd-ctxmenu button:hover { background: #3c4043; }
+.gbd-ctx-del { color: #f28b82 !important; font-weight: 600; }
+
+/* 底部工具列 */
 .gbd-bar {
   position: fixed;
   left: 16px;
   bottom: 16px;
-  z-index: 2147483647;
+  z-index: 2147483646;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -32,7 +50,6 @@ gem-nav-list-item[data-test-id="conversation"] .mdc-list-item__content {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   font: 13px/1.4 "Google Sans", system-ui, sans-serif;
 }
-
 .gbd-count {
   min-width: 20px;
   text-align: center;
@@ -41,7 +58,16 @@ gem-nav-list-item[data-test-id="conversation"] .mdc-list-item__content {
   border-radius: 10px;
   padding: 1px 8px;
 }
-
+.gbd-filter {
+  border: 1px solid #5f6368;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: #2a2b2d;
+  color: #fff;
+  font-size: 13px;
+  width: 120px;
+}
+.gbd-filter::placeholder { color: #9aa0a6; }
 .gbd-btn {
   border: 0;
   border-radius: 8px;
@@ -54,20 +80,7 @@ gem-nav-list-item[data-test-id="conversation"] .mdc-list-item__content {
 .gbd-btn:hover { background: #4d5156; }
 .gbd-del { background: #b3261e; }
 .gbd-del:hover { background: #c5372f; }
-
-.gbd-filter {
-  border: 1px solid #5f6368;
-  border-radius: 8px;
-  padding: 4px 8px;
-  background: #2a2b2d;
-  color: #fff;
-  font-size: 13px;
-  width: 120px;
-}
-.gbd-filter::placeholder { color: #9aa0a6; }
-
 .gbd-status { font-size: 12px; opacity: 0.85; }
 
-/* 刪除進行中:蓋一層,避免原生選單/對話框閃爍與誤點 */
+/* 刪除進行中:蓋掉原生選單/對話框閃爍 */
 body.gbd-deleting .cdk-overlay-container { opacity: 0; pointer-events: none; }
-body.gbd-deleting .gbd-check { pointer-events: none; opacity: 0.4; }
