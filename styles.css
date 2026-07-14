@@ -34,6 +34,28 @@ gem-nav-list-item[data-test-id="conversation"].gbd-selected a {
 .gbd-ctxmenu button:hover { background: #3c4043; }
 .gbd-ctx-del { color: #f28b82 !important; font-weight: 600; }
 
+/* 刪除確認小視窗 */
+.gbd-confirm {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 190px;
+  padding: 12px;
+  background: #2a2b2d;
+  border: 1px solid #5f6368;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #e8eaed;
+  font: 13px/1.5 "Google Sans", system-ui, sans-serif;
+  animation: gbd-pop 0.12s ease-out;
+}
+@keyframes gbd-pop { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; } }
+.gbd-confirm-msg { margin-bottom: 10px; }
+.gbd-confirm-msg b { color: #fff; }
+.gbd-confirm-row { display: flex; gap: 8px; justify-content: flex-end; }
+.gbd-confirm-ok:focus-visible,
+.gbd-confirm-ok:focus { outline: 2px solid #f28b82; outline-offset: 1px; }
+.gbd-confirm-hint { margin-top: 8px; font-size: 11px; opacity: 0.6; text-align: right; }
+
 /* 底部工具列 */
 .gbd-bar {
   position: fixed;

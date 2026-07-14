@@ -142,13 +142,14 @@
   }
 
   let running = false;
-  async function runDelete() {
+  async function runDelete(anchorRect) {
     if (running || !selected.size) return;
-    hideMenu();
     // 依 DOM 由上到下取出已選 row,反向刪(bottom-up 避免位移)
     const targets = getRows().filter((r) => selected.has(idOf(r))).reverse();
     if (!targets.length) return;
-    if (!confirm(`確定刪除 ${targets.length} 筆對話?此動作無法復原。`)) return;
+    const rect = anchorRect || bar.querySelector(".gbd-del").getBoundingClientRect();
+    hideMenu();
+    if (!(await confirmPopup(targets.length, rect))) return;
 
     running = true;
     aborted = false;
@@ -172,6 +173,50 @@
     setTimeout(() => { if (status && !running) status.textContent = ""; }, 5000);
   }
 
+  // ── 確認小視窗(取代 confirm();貼在觸發按鈕旁,Enter 確定 / Esc 取消)──
+  let confirmOpen = false;
+  function confirmPopup(count, rect) {
+    return new Promise((resolve) => {
+      confirmOpen = true;
+      const pop = document.createElement("div");
+      pop.className = "gbd-confirm";
+      pop.innerHTML =
+        `<div class="gbd-confirm-msg">刪除 <b>${count}</b> 筆對話?無法復原。</div>` +
+        '<div class="gbd-confirm-row">' +
+          '<button class="gbd-btn gbd-confirm-cancel">取消</button>' +
+          '<button class="gbd-btn gbd-del gbd-confirm-ok">刪除</button>' +
+        '</div>' +
+        '<div class="gbd-confirm-hint">Enter 確定 · Esc 取消</div>';
+      document.body.appendChild(pop);
+      // 定位:預設在觸發按鈕上方,空間不夠就放下方
+      const pw = pop.offsetWidth || 210, ph = pop.offsetHeight || 96;
+      let left = Math.min(rect.left, window.innerWidth - pw - 8);
+      let top = rect.top - ph - 8;
+      if (top < 8) top = rect.bottom + 8;
+      pop.style.left = Math.max(8, left) + "px";
+      pop.style.top = top + "px";
+      pop.querySelector(".gbd-confirm-ok").focus();
+
+      const done = (val) => {
+        if (!confirmOpen) return;
+        confirmOpen = false;
+        document.removeEventListener("keydown", onKey, true);
+        document.removeEventListener("mousedown", onOutside, true);
+        pop.remove();
+        resolve(val);
+      };
+      const onKey = (e) => {
+        if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); done(true); }
+        else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
+      };
+      const onOutside = (e) => { if (!pop.contains(e.target)) { e.stopPropagation(); done(false); } };
+      pop.querySelector(".gbd-confirm-ok").addEventListener("click", () => done(true));
+      pop.querySelector(".gbd-confirm-cancel").addEventListener("click", () => done(false));
+      document.addEventListener("keydown", onKey, true);   // capture:搶在全域 Esc 前
+      document.addEventListener("mousedown", onOutside, true);
+    });
+  }
+
   // ── 右鍵選單 ────────────────────────────────────────────────
   let menuEl;
   function ensureMenu() {
@@ -181,7 +226,7 @@
     menuEl.style.display = "none";
     menuEl.innerHTML = '<button class="gbd-ctx-del"></button><button class="gbd-ctx-clear">取消選取</button>';
     document.body.appendChild(menuEl);
-    menuEl.querySelector(".gbd-ctx-del").addEventListener("click", runDelete);
+    menuEl.querySelector(".gbd-ctx-del").addEventListener("click", (e) => runDelete(e.currentTarget.getBoundingClientRect()));
     menuEl.querySelector(".gbd-ctx-clear").addEventListener("click", () => { clearSelection(); hideMenu(); });
   }
   function showMenu(x, y) {
@@ -218,7 +263,7 @@
     bar.querySelector(".gbd-match").addEventListener("click", () => selectByKeyword(fi.value));
     fi.addEventListener("keydown", (e) => { if (e.key === "Enter") selectByKeyword(fi.value); });
     bar.querySelector(".gbd-clear").addEventListener("click", clearSelection);
-    bar.querySelector(".gbd-del").addEventListener("click", runDelete);
+    bar.querySelector(".gbd-del").addEventListener("click", (e) => runDelete(e.currentTarget.getBoundingClientRect()));
     bar.querySelector(".gbd-cancel").addEventListener("click", () => { aborted = true; });
     updateBar();
   }
@@ -247,6 +292,7 @@
 
   // ── 事件綁定(capture 階段搶在 Angular 前面)────────────────
   document.addEventListener("click", (e) => {
+    if (confirmOpen) return;
     if (menuEl && !e.target.closest(".gbd-ctxmenu")) hideMenu();
     const row = e.target.closest(ROW_SELECTOR);
     if (!row) {
@@ -274,6 +320,7 @@
   }, true);
 
   document.addEventListener("contextmenu", (e) => {
+    if (confirmOpen) return;
     const row = e.target.closest(ROW_SELECTOR);
     if (!row) { hideMenu(); return; }
     e.preventDefault();
@@ -283,7 +330,7 @@
   }, true);
 
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
+    if (e.key !== "Escape" || confirmOpen) return;
     hideMenu();
     // 非刪除中、焦點不在關鍵字框時,Esc 清空選取(避免打斷我們自己關 dialog 的 Escape)
     if (!running && selected.size && !(e.target && e.target.classList && e.target.classList.contains("gbd-filter"))) {
