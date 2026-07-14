@@ -1,48 +1,106 @@
 # Gemini Toolkit
 
-Gemini 側欄增強工具集。純本地 content script、**零外連、無額外權限**(只在 `gemini.google.com` 生效)。
+> Multi-select and bulk-delete your Google Gemini sidebar conversations — with a file-manager-style selection UX. Runs **fully locally, zero network, no extra permissions**.
 
-目前功能:對話多選批次刪除、關鍵字過濾選取。之後可擴充(prompt 管理、快捷鍵、匯出等)。
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/oscar3x39/gemini-toolkit/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## 安裝(未打包,開發者模式)
+繁體中文說明 → [README.zh-TW.md](README.zh-TW.md)
 
-1. Chrome 開 `chrome://extensions`
-2. 右上角開「開發者模式 / Developer mode」
-3. 點「載入未封裝項目 / Load unpacked」→ 選這個資料夾
-4. 打開 <https://gemini.google.com>,展開左側對話列表
+Deleting Gemini conversations one by one is painful — three clicks and a confirm dialog *per chat*. Gemini Toolkit adds proper multi-select so you can clear dozens in one pass.
 
-## 用法
+---
 
-選取(像檔案總管的多選):
+## Features
 
-- **選取模式開關**(左下工具列):開啟後**一般左鍵就是選取**,不用壓 Cmd,清一大批最順。狀態會記住(重載仍保留)。關掉恢復正常瀏覽。
-- **Cmd/Ctrl + 左鍵**:逐個加選 / 取消(模式關著時用;平常左鍵照樣開對話)。
-- **Shift + 左鍵**:從上一個選到這個,中間全選。
-- 選中的對話會**藍色高亮**。
-- **右鍵**任一對話 → 跳出「刪除選取 (N)」→ 點它就整批刪。
-- 點對話以外的空白處、或按 **Esc** → 清空選取。
+- **File-manager-style selection** — Cmd/Ctrl-click to toggle, Shift-click for ranges, or flip on **Select Mode** and just single-click.
+- **Right-click to delete** — right-click any conversation → *Delete selected (N)*.
+- **Keyword filter** — type a term, hit *Match*, and every conversation whose title contains it gets selected.
+- **In-place confirm** — a small popover next to the delete button (no jarring native alert). **Enter** confirms, **Esc** cancels.
+- **Abort mid-run** — stop a long deletion at any time.
+- **Selection survives re-render** — tracked by conversation id, not DOM nodes, so scrolling or Gemini repainting the sidebar won't drop your picks.
 
-其他:
+---
 
-- 左下工具列:關鍵字框 + `選符合` / `清除` / `刪除選取`(顯示已選數量)。閒置時自動收起,只留模式鈕。
-- **關鍵字過濾**:輸入字串按 `選符合`(或 Enter),自動選取標題含該字的對話(不分大小寫、累加)。適合清「特定主題」的一整批舊對話。
-- 刪除 → 按鈕旁彈出確認小視窗(**Enter 確定 / Esc 取消**,不是突兀的原生 alert)→ 逐筆走 Gemini 原生「三點選單 → 刪除 → 確認」流程;**刪除中可按「中止」停下**。
+## Install
 
-選取以對話 id(`href` 的 `/app/<id>`)記錄,Gemini 重繪側欄時選取不會掉。
+### Option A — from a Release (recommended)
 
-## 設計說明(為什麼這樣寫)
+1. Download `gemini-toolkit.zip` from the [latest release](https://github.com/oscar3x39/gemini-toolkit/releases/latest) and unzip it.
+2. Open `chrome://extensions` in Chrome (or any Chromium browser: Edge, Brave, Arc…).
+3. Turn on **Developer mode** (top-right toggle).
+4. Click **Load unpacked** and select the unzipped folder.
+5. Open <https://gemini.google.com> and expand the left conversation list.
 
-Selector 與刪除流程對照開源 [Gemini Mass Delete](https://github.com/sinadalvand/GeminiMassDeleteExtension)(MIT, sinadalvand)驗證後重新實作:
+### Option B — from source
 
-- **用 Gemini 的 `data-test-id` 當主 selector**:`gem-nav-list-item[data-test-id="conversation"]`(row)、`actions-menu-button`、`delete-button`、`confirm-button` 都是穩定屬性,不是 Angular 亂數 class。刪除/確認再加 `aria-label` 與文字 fallback(多語系)。
-- **`simulateClick`**:派 `mouseover/mousedown/mouseup + click`,因為 Angular Material 選單常吃真實 pointer 事件,單純 `.click()` 打不開。
-- **bottom-up 刪除**:由下往上刪,避免刪除位移 DOM 影響後續 row。
-- **等 DOM 真的移除才算成功**(最多 5s),不是盲等固定秒數;卡住就派 `Escape` 關掉 dialog,避免一筆卡死整批。
-- 若日後 Gemini 改結構、row 抓不到 → console 會印 `row 命中 0 筆`,在 `ROW_FALLBACKS` 補候選即可。
+```bash
+git clone https://github.com/oscar3x39/gemini-toolkit.git
+```
 
-## 已知限制 / 之後可擴充
+Then follow steps 2–5 above, selecting the cloned folder.
 
-- 若 Gemini 改了 row 結構且候選全失效 → console 會提示,補候選即可。
-- 目前刪除是「模擬點原生 UI」,不是打 API;好處是行為與手動一致、不怕動到未公開端點,壞處是速度受 UI 動畫節奏限制(`DELAY` 可調)。
-- **無法做日期篩選**:Gemini 側欄的對話 row 裡不含任何時間戳(只有標題、置頂 icon、選單、對話 id),沒有可讀的日期資料。要日期得攔內部 API,不適合放這種輕量工具。
-- 可擴充方向:排除置頂只選其餘、刪除前匯出對話標題備份、快捷鍵全選。
+> After any update, click the **↻ reload** icon on the extension card in `chrome://extensions`, then refresh the Gemini tab.
+
+---
+
+## Usage
+
+**Selecting conversations**
+
+| Action | Result |
+|---|---|
+| Toggle **Select Mode** (bottom-left bar) | Plain left-click selects — no modifier needed. State is remembered across reloads. |
+| **Cmd/Ctrl + click** | Toggle a single conversation (when Select Mode is off; normal click still opens the chat). |
+| **Shift + click** | Select the range between the last pick and this one. |
+| **Right-click** a conversation | Pop up *Delete selected (N)*. |
+| Click empty space, or **Esc** | Clear the selection. |
+
+Selected conversations are highlighted in blue.
+
+**Deleting**
+
+1. Select what you want gone.
+2. Right-click → *Delete selected*, or hit the red **Delete selected** button.
+3. A confirm popover appears next to the button — **Enter** to confirm, **Esc** to cancel.
+4. It runs each conversation through Gemini's native *⋮ menu → Delete → Confirm* flow. Hit **Abort** to stop early.
+
+**Keyword filter** — type into the box and press *Match* (or Enter) to select every conversation whose title contains that text (case-insensitive, additive). Great for wiping a whole topic at once.
+
+---
+
+## How it works
+
+Selectors and the delete flow were reverse-engineered against the live Gemini DOM and cross-checked with the open-source [Gemini Mass Delete](https://github.com/sinadalvand/GeminiMassDeleteExtension) (MIT):
+
+- **Stable `data-test-id` selectors** — `gem-nav-list-item[data-test-id="conversation"]` (row), `actions-menu-button`, `delete-button`, `confirm-button` — not fragile Angular hash classes. Delete/confirm add `aria-label` + text fallbacks for other languages.
+- **`simulateClick`** dispatches `mouseover/mousedown/mouseup + click`, because Angular Material menus often ignore a bare `.click()`.
+- **Bottom-up deletion** — removing rows shifts the DOM, so it deletes from the bottom up.
+- **DOM-removal confirmation** — each delete waits (up to 5s) for the row to actually leave the DOM before moving on; if it gets stuck, it sends `Escape` so one bad item can't block the batch.
+- **Id-based selection** keyed off the `/app/<id>` href, so re-renders don't lose your picks.
+
+If Gemini ever changes the row structure, the console logs `row 命中 0 筆` / `0 rows matched`; add a new candidate to `ROW_FALLBACKS` in `content.js`.
+
+---
+
+## Limitations
+
+- **No date filtering.** Gemini's sidebar rows carry no timestamp — only a title, a pin icon, the menu, and the conversation id. Filtering by date would require intercepting Gemini's internal API, which is out of scope for a lightweight tool. In practice, lower in the list = older, so Shift-click from a point down to the bottom.
+
+---
+
+## Privacy
+
+- Runs only on `https://gemini.google.com`.
+- **No** `host_permissions`, **no** background page, **no** network requests of any kind.
+- It only reads the sidebar DOM and drives Gemini's own delete UI — exactly what you'd do by hand.
+
+---
+
+## Credits
+
+Selector reference and delete-flow patterns adapted from [Gemini Mass Delete](https://github.com/sinadalvand/GeminiMassDeleteExtension) by sinadalvand (MIT).
+
+## License
+
+[MIT](LICENSE)
