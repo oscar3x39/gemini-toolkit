@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Gemini Toolkit",
   "version": "0.2.0",
-  "description": "Gemini 側欄增強工具集:多選批次刪除、關鍵字過濾、閱讀模式(寬欄/字級/字體)。純本地執行、零外連。",
+  "description": "Gemini sidebar toolkit: bulk-delete conversations with multi-select & keyword filter, plus a reader mode (full-width, larger text). Local-only, zero network.",
   "content_scripts": [
     {
       "matches": [
