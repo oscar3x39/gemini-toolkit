@@ -240,6 +240,52 @@
   }
   function hideMenu() { if (menuEl) menuEl.style.display = "none"; }
 
+
+  // ── 閱讀模式(寬欄 / 字級 / 字體;設定存 localStorage,套用為 CSS 變數)──
+  const READER_KEY = "gbd.reader";
+  const READER_DEF = { on: false, width: "96vw", fs: "20px", font: "system" };
+  const READER_FONTS = {
+    system: '"PingFang TC", "Noto Sans TC", system-ui, -apple-system, sans-serif',
+    google: '"Google Sans Flex", "Google Sans", "Helvetica Neue", sans-serif',
+    serif: '"Songti TC", "Noto Serif TC", Georgia, serif',
+  };
+  let reader = { ...READER_DEF };
+  try { reader = { ...READER_DEF, ...JSON.parse(localStorage.getItem(READER_KEY) || "{}") }; } catch (_) {}
+  function applyReader() {
+    const h = document.documentElement;
+    h.classList.toggle("gbd-reader", reader.on);
+    h.style.setProperty("--gbd-width", reader.width);
+    h.style.setProperty("--gbd-fs", reader.fs);
+    h.style.setProperty("--gbd-font", READER_FONTS[reader.font] || READER_FONTS.system);
+    try { localStorage.setItem(READER_KEY, JSON.stringify(reader)); } catch (_) {}
+    updateBar();
+  }
+  let readerPop;
+  function toggleReaderPop(anchor) {
+    if (readerPop) { readerPop.remove(); readerPop = null; return; }
+    const sel = (key, opts) =>
+      `<select data-key="${key}">` +
+      opts.map(([v, label]) => `<option value="${v}"${reader[key] === v ? " selected" : ""}>${label}</option>`).join("") +
+      "</select>";
+    readerPop = document.createElement("div");
+    readerPop.className = "gbd-reader-pop";
+    readerPop.innerHTML =
+      "<span>寬度</span>" + sel("width", [["96vw", "滿版"], ["1400px", "1400"], ["1100px", "1100"], ["760px", "760(Medium)"]]) +
+      "<span>字級</span>" + sel("fs", [["18px", "18"], ["20px", "20"], ["22px", "22"], ["24px", "24"]]) +
+      "<span>字體</span>" + sel("font", [["system", "系統(PingFang)"], ["google", "Google Sans"], ["serif", "宋體"]]);
+    document.body.appendChild(readerPop);
+    const r = anchor.getBoundingClientRect();
+    readerPop.style.left = r.left + "px";
+    readerPop.style.top = (r.top - readerPop.offsetHeight - 8) + "px";
+    readerPop.addEventListener("change", (e) => { reader[e.target.dataset.key] = e.target.value; reader.on = true; applyReader(); });
+    const onOutside = (e) => {
+      if (readerPop && !readerPop.contains(e.target) && e.target !== anchor) {
+        readerPop.remove(); readerPop = null; document.removeEventListener("mousedown", onOutside, true);
+      }
+    };
+    document.addEventListener("mousedown", onOutside, true);
+  }
+
   // ── 底部工具列(關鍵字過濾 + 刪除)──────────────────────────
   let bar;
   function ensureBar() {
@@ -247,6 +293,7 @@
     bar = document.createElement("div");
     bar.className = "gbd-bar";
     bar.innerHTML =
+      '<button class="gbd-btn gbd-reader" title="左鍵開關閱讀模式;右鍵調寬度/字級/字體"></button>' +
       '<button class="gbd-btn gbd-mode" title="開啟後一般左鍵即選取,不用壓 Cmd"></button>' +
       '<span class="gbd-count">0</span>' +
       '<span class="gbd-actions">' +
@@ -259,6 +306,9 @@
       '<span class="gbd-status"></span>';
     document.body.appendChild(bar);
     const fi = bar.querySelector(".gbd-filter");
+    const rb = bar.querySelector(".gbd-reader");
+    rb.addEventListener("click", () => { reader.on = !reader.on; applyReader(); });
+    rb.addEventListener("contextmenu", (e) => { e.preventDefault(); e.stopPropagation(); toggleReaderPop(rb); });
     bar.querySelector(".gbd-mode").addEventListener("click", () => setSelectMode(!selectMode));
     bar.querySelector(".gbd-match").addEventListener("click", () => selectByKeyword(fi.value));
     fi.addEventListener("keydown", (e) => { if (e.key === "Enter") selectByKeyword(fi.value); });
@@ -273,6 +323,9 @@
     const mode = bar.querySelector(".gbd-mode");
     mode.textContent = selectMode ? "選取模式:開" : "選取模式:關";
     mode.classList.toggle("on", selectMode);
+    const rb = bar.querySelector(".gbd-reader");
+    rb.textContent = reader.on ? "閱讀:開" : "閱讀:關";
+    rb.classList.toggle("on", reader.on);
     // 閒置(無選取、非選取模式、沒在刪)→ 收起關鍵字/刪除,只留模式鈕
     bar.classList.toggle("gbd-idle", !running && selected.size === 0 && !selectMode);
     bar.classList.toggle("gbd-running", running);
@@ -340,7 +393,7 @@
   window.addEventListener("scroll", hideMenu, true);
 
   // ── 啟動 ────────────────────────────────────────────────────
-  function boot() { ensureBar(); ensureMenu(); applyHighlight(); console.log(TAG, `row 命中 ${getRows().length} 筆`); }
+  function boot() { ensureBar(); ensureMenu(); applyReader(); applyHighlight(); console.log(TAG, `row 命中 ${getRows().length} 筆`); }
   new MutationObserver(() => { if (!running) applyHighlight(); }).observe(document.body, { childList: true, subtree: true });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

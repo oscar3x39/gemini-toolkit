@@ -59,8 +59,8 @@ gem-nav-list-item[data-test-id="conversation"].gbd-selected a {
 /* 底部工具列 */
 .gbd-bar {
   position: fixed;
-  left: 16px;
-  bottom: 16px;
+  left: 72px;
+  bottom: 6px;
   z-index: 2147483646;
   display: flex;
   align-items: center;
@@ -122,3 +122,83 @@ gem-nav-list-item[data-test-id="conversation"].gbd-selected a {
 
 /* 刪除進行中:蓋掉原生選單/對話框閃爍 */
 body.gbd-deleting .cdk-overlay-container { opacity: 0; pointer-events: none; }
+
+/* ── 閱讀模式(html.gbd-reader 才生效;數值走 CSS 變數,由 content.js 依設定寫入)──
+   字級/行距/段距對照 Medium(20px、1.8、1.2em);寬度預設滿版(使用者要一屏多行),可在設定改回 760。 */
+html.gbd-reader {
+  --gbd-width: 96vw;
+  --gbd-fs: 20px;
+  --gbd-font: "PingFang TC", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+}
+html.gbd-reader .conversation-container,
+html.gbd-reader .input-area-container { max-width: var(--gbd-width) !important; }
+html.gbd-reader message-content .markdown {
+  font-size: var(--gbd-fs) !important;
+  line-height: 1.8 !important;
+  font-family: var(--gbd-font) !important;
+  letter-spacing: 0.02em !important;
+  color: #e6e6e6 !important;
+}
+html.gbd-reader message-content .markdown p { margin: 0 0 1.2em !important; }
+html.gbd-reader message-content .markdown :is(ul, ol) { margin: 0 0 1.2em !important; }
+html.gbd-reader message-content .markdown li { margin: 0 0 0.45em !important; }
+html.gbd-reader message-content .markdown li > p { margin: 0 !important; }
+html.gbd-reader message-content .markdown li :is(ul, ol) { margin: 0.3em 0 0 !important; }
+html.gbd-reader message-content .markdown :is(h1, h2, h3, h4) {
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  color: #fff !important;
+  margin: 1.8em 0 0.6em !important;
+}
+html.gbd-reader message-content .markdown h2 { font-size: 1.45em !important; }
+html.gbd-reader message-content .markdown h3 { font-size: 1.25em !important; }
+html.gbd-reader message-content .markdown h4 { font-size: 1.1em !important; }
+html.gbd-reader message-content .markdown strong { color: #fff !important; font-weight: 600 !important; }
+html.gbd-reader message-content .markdown code:not(pre code) {
+  font-size: 0.85em !important;
+  line-height: 1 !important;
+  padding: 2px 6px !important;
+  border-radius: 5px !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: #f1f1f1 !important;
+}
+html.gbd-reader message-content .markdown pre { font-size: 15px !important; line-height: 1.6 !important; margin: 0 0 1.2em !important; }
+html.gbd-reader message-content .markdown blockquote {
+  border-left: 3px solid #5f6368 !important;
+  padding-left: 1em !important;
+  color: #bdbdbd !important;
+  margin: 0 0 1.2em !important;
+}
+html.gbd-reader user-query .query-text { font-size: var(--gbd-fs) !important; line-height: 1.7 !important; }
+/* 輸入框:壓扁(原本外層 117px 高) */
+html.gbd-reader .text-input-field { padding: 6px 12px !important; }
+html.gbd-reader .input-area-container,
+html.gbd-reader input-container { min-height: 0 !important; }
+
+/* 閱讀設定小視窗 */
+.gbd-reader-pop {
+  position: fixed;
+  z-index: 2147483647;
+  padding: 10px 12px;
+  background: #2a2b2d;
+  border: 1px solid #5f6368;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #e8eaed;
+  font: 13px/1.5 "Google Sans", system-ui, sans-serif;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: center;
+}
+.gbd-reader-pop select {
+  background: #1f1f1f;
+  color: #fff;
+  border: 1px solid #5f6368;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 13px;
+}
+.gbd-reader.on { background: #1a73e8; }
+.gbd-reader.on:hover { background: #2b7de9; }
