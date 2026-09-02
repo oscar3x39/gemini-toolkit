@@ -171,6 +171,9 @@ html.gbd-reader message-content .markdown blockquote {
   margin: 0 0 1.2em !important;
 }
 html.gbd-reader user-query .query-text { font-size: var(--gbd-fs) !important; line-height: 1.7 !important; }
+/* 使用者留言:user-query 自帶 max-width 724 置中 → 拉到跟內容欄同寬,氣泡靠右 */
+html.gbd-reader user-query { max-width: var(--gbd-width) !important; width: 100% !important; }
+html.gbd-reader .user-query-bubble-with-background { max-width: 60% !important; }
 /* 輸入框:壓扁(原本外層 117px 高) */
 html.gbd-reader .text-input-field { padding: 6px 12px !important; }
 html.gbd-reader .input-area-container,
