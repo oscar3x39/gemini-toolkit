@@ -18,7 +18,7 @@ Deleting Gemini conversations one by one is painful — three clicks and a confi
 - **Keyword filter** — type a term, hit *Match*, and every conversation whose title contains it gets selected.
 - **In-place confirm** — a small popover next to the delete button (no jarring native alert). **Enter** confirms, **Esc** cancels.
 - **Abort mid-run** — stop a long deletion at any time.
-- **Reader mode** — one click on the bottom-left "閱讀" button: Medium-style typography (20px body / 1.8 line-height) on a full-width column, 1.2em paragraph spacing, heading breathing room, higher-contrast inline code, system font (PingFang), slimmer input box. Right-click the button to tune width (full / 1400 / 1100 / 760) / font size (18–24) / font family (system / Google Sans / serif); settings persist.
+- **Reader mode** — one click on the bottom-left "閱讀" button: Medium-style typography (22px body / 1.8 line-height) on a full-width column, 1.2em paragraph spacing, heading breathing room, higher-contrast inline code, system font (PingFang), slimmer input box. Right-click the button to tune width (full / 1400 / 1100 / 760) / font size (18–26) / font family (system / Google Sans / serif); settings persist.
 - **Selection survives re-render** — tracked by conversation id, not DOM nodes, so scrolling or Gemini repainting the sidebar won't drop your picks.
 
 ---

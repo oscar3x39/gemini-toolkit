@@ -243,7 +243,7 @@
 
   // ── 閱讀模式(寬欄 / 字級 / 字體;設定存 localStorage,套用為 CSS 變數)──
   const READER_KEY = "gbd.reader";
-  const READER_DEF = { on: false, width: "96vw", fs: "20px", font: "system" };
+  const READER_DEF = { on: false, width: "96vw", fs: "22px", font: "system" };
   const READER_FONTS = {
     system: '"PingFang TC", "Noto Sans TC", system-ui, -apple-system, sans-serif',
     google: '"Google Sans Flex", "Google Sans", "Helvetica Neue", sans-serif',
@@ -271,7 +271,7 @@
     readerPop.className = "gbd-reader-pop";
     readerPop.innerHTML =
       "<span>寬度</span>" + sel("width", [["96vw", "滿版"], ["1400px", "1400"], ["1100px", "1100"], ["760px", "760(Medium)"]]) +
-      "<span>字級</span>" + sel("fs", [["18px", "18"], ["20px", "20"], ["22px", "22"], ["24px", "24"]]) +
+      "<span>字級</span>" + sel("fs", [["18px", "18"], ["20px", "20"], ["22px", "22"], ["24px", "24"], ["26px", "26"]]) +
       "<span>字體</span>" + sel("font", [["system", "系統(PingFang)"], ["google", "Google Sans"], ["serif", "宋體"]]);
     document.body.appendChild(readerPop);
     const r = anchor.getBoundingClientRect();

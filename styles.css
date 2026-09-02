@@ -127,7 +127,7 @@ body.gbd-deleting .cdk-overlay-container { opacity: 0; pointer-events: none; }
    字級/行距/段距對照 Medium(20px、1.8、1.2em);寬度預設滿版(使用者要一屏多行),可在設定改回 760。 */
 html.gbd-reader {
   --gbd-width: 96vw;
-  --gbd-fs: 20px;
+  --gbd-fs: 22px;
   --gbd-font: "PingFang TC", "Noto Sans TC", system-ui, -apple-system, sans-serif;
 }
 html.gbd-reader .conversation-container,
