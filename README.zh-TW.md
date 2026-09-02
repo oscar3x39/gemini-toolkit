@@ -2,7 +2,7 @@
 
 > 多選、批次刪除 Google Gemini 側欄對話,操作像檔案總管一樣自然。**純本地執行、零外連、無額外權限**。
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/oscar3x39/gemini-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/oscar3x39/gemini-toolkit/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 English → [README.md](README.md)

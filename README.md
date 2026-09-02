@@ -2,7 +2,7 @@
 
 > Multi-select and bulk-delete your Google Gemini sidebar conversations — with a file-manager-style selection UX. Runs **fully locally, zero network, no extra permissions**.
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/oscar3x39/gemini-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/oscar3x39/gemini-toolkit/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 繁體中文說明 → [README.zh-TW.md](README.zh-TW.md)
